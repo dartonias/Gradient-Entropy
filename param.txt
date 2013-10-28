@@ -1,0 +1,9 @@
+Lx          16
+Ly          16
+betaLow     1.00
+betaHigh    1.00
+JLow        1.00
+JHigh       1.00
+Eq          1000
+MCS         10000
+bins        10
