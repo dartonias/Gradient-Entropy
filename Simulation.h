@@ -7,6 +7,9 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <assert.h>
+#include "MersenneTwister.h"
+#include <math.h>
 
 // Class defining the bonds
 class BOND{
@@ -46,13 +49,21 @@ class SIM{
         double betaLow, betaHigh;
         // Assuming a gradient from JLow to JHigh on the lattice
         double JLow, JHigh;
-        // Number of equilibriation, Monte Carlo steps, and total bins
-        int Eq, MCS, bins;
+        // Random number seed
+        int seed;
+        // Random number generator
+        MTRand* rand;
         // All the connections, stored independantly for every spin
         // i.e. spin[i] is connected to BOND elements neighbors[i][j] for j=1,2,3,...
         std::vector<std::vector<int> > neighbors;
         // BOND elements of the lattice, defining the connections, couplings, and local temperature
         std::vector<BOND> bonds;
+        // Array containing the spin state of the system
+        std::vector<int> spins;
+        // Internal energy of the system -- should be the same as calcE()
+        double Energy;
+        // Object used for cluster update
+        std::vector<int> cluster;
     public:
         // Default constructor, will read from a parameter file
         SIM();
@@ -60,20 +71,33 @@ class SIM{
         void readInput();
         // Build up all the neighbors
         void buildLatt();
+        // Calculate full energy
+        double calcE();
+        // Polarize the spins of the lattice
+        void polarizeSpins();
+        // Single spin update
+        void singleUp();
+        // Number of equilibriation, Monte Carlo steps, and total bins
+        int Eq, MCS, bins;
+        // Cluster update
+        void wolff();
 };
 
 // Default constructor
 SIM::SIM(){
     readInput();
+    rand = new MTRand(seed);
     buildLatt();
+    polarizeSpins();
+    Energy = calcE();
 }
 
 // Reads the input parameters from a file
 void SIM::readInput(){
-    char* filename = "param.txt";
+    std::string filename = "param.txt";
     // Garbage string for collecting plaintext in parameter file
     std::string g;
-    std::fstream inFile(filename);
+    std::fstream inFile(filename.c_str());
     inFile >> g >> Lx;
     inFile >> g >> Ly;
     inFile >> g >> betaLow;
@@ -83,13 +107,14 @@ void SIM::readInput(){
     inFile >> g >> Eq;
     inFile >> g >> MCS;
     inFile >> g >> bins;
+    inFile >> g >> seed;
     inFile.close();
 
     // Input checking
     assert (Lx >= 2);
     assert (Ly >= 2);
-    assert (betaLow < betaHigh);
-    assert (JLow < JHigh);
+    assert (betaLow <= betaHigh);
+    assert (JLow <= JHigh);
 
     /* Debug for input
     std::cout<< Lx          << std::endl;
@@ -110,42 +135,105 @@ void SIM::readInput(){
 void SIM::buildLatt(){
     nSpins = Lx*Ly;
 
-    vector<int> tvec();
-    tvec.erase();
+    std::vector<int> tvec;
+    tvec.clear();
     neighbors.resize(nSpins,tvec);
 
-    bonds.erase();
+    bonds.clear();
     BOND tBond;
     int bond_counter = 0;
     int s1, s2;
     double tJ, tB;
-    for (int x=0;x<Lx-1;x++){
-        for (int y=0;y<Ly-1;y++){
+    for (int x=0;x<Lx;x++){
+        for (int y=0;y<Ly;y++){
             tJ = JLow + x*1.0/Lx * (JHigh - JLow);
             tB = betaLow + x*1.0/Lx * (betaHigh - betaLow);
 
             // Bond to the right
             s1 = x + y*Lx;
             s2 = s1 + 1;
-            tBond.assign(s1,s2,tJ,tB);
-            bonds.push_back(tBond);
-            neighbor[s1].push_back(bond_counter);
-            neighbor[s2].push_back(bond_counter);
-            bond_counter++;
+            if (x < Lx-1){
+                tBond.assign(s1,s2,tJ,tB);
+                bonds.push_back(tBond);
+                neighbors[s1].push_back(bond_counter);
+                neighbors[s2].push_back(bond_counter);
+                bond_counter++;
+            }
 
             // Upward bond
             s2 = s1 + Lx;
-            tBond.assign(s1,s2,tJ,tB);
-            bonds.push_back(tBond);
-            neighbor[s1].push_back(bond_counter);
-            neighbor[s2].push_back(bond_counter);
-            bond_counter++;
+            if (y < Ly-1){
+                tBond.assign(s1,s2,tJ,tB);
+                bonds.push_back(tBond);
+                neighbors[s1].push_back(bond_counter);
+                neighbors[s2].push_back(bond_counter);
+                bond_counter++;
+            }
         }
     }
 
-    /* Debugging for bonds */
-    for (int i=0;i<neighbors.size(),i++){
-        // todo
+    /* Debugging for bonds
+    for (int i=0;i<neighbors.size();i++){
+        std::cout << i << " --> ";
+        for (int j=0;j<neighbors[i].size();j++){
+            std::cout << bonds[neighbors[i][j]].a << " "<< bonds[neighbors[i][j]].b <<", ";
+        }
+        std::cout << std::endl;
     }
-    /* */
+    */
+}
+
+// Full calculation of the energy, by looping over all the bonds
+// Assumption is that bonds are satisfies by FERROMAGNETIC interactions
+// and we are simulating an Ising model where satisfied, E = -1, unsatisfied, E = 0
+double SIM::calcE(){
+    double tE = 0;
+    for (int i=0;i<bonds.size();i++){
+        if (spins[bonds[i].a] == spins[bonds[i].b]) tE -= bonds[i].J;
+    }
+    return tE;
+}
+
+// Polarize the spins of the lattice
+void SIM::polarizeSpins(){
+    spins.assign(nSpins,0);
+}
+
+// Single spin update
+void SIM::singleUp(){
+    // Spin we are attempting to flip
+    int z = rand->randInt(nSpins-1);
+    // Change in probability, which depends on the local beta*dE for eacn bond
+    double dP = 0.0;
+    double dE = 0.0;
+    for (int i=0;i<neighbors[z].size();i++){
+        if (spins[bonds[neighbors[z][i]].a] == spins[bonds[neighbors[z][i]].b]) {
+        dP += bonds[neighbors[z][i]].J*bonds[neighbors[z][i]].beta;
+        dE += bonds[neighbors[z][i]].J;
+        }
+        else {
+        dP -= bonds[neighbors[z][i]].J*bonds[neighbors[z][i]].beta;
+        dE -= bonds[neighbors[z][i]].J;
+        }
+    }
+    if (rand->randDblExc() < exp(-1.0*dP)){
+        spins[z] = (spins[z]+1)%2;
+        Energy += dE;
+    }
+    
+    /* Debugging check
+    if(fabs(Energy - calcE()) > 1e-5){
+        std::cout << "Energy = " << Energy << std::endl;
+        std::cout << "calcE = " << calcE() << std::endl;
+        throw -1;
+    }
+    */
+}
+
+// Wolff cluster update, important for typical systems near T_c
+void SIM::wolff(){
+    // Reset the cluster object
+    cluster.assign(nSpins,0);
+    // Starting spin of the cluster
+    int z = rand->randInt(nSpins-1);
 }
