@@ -81,6 +81,8 @@ class SIM{
         int Eq, MCS, bins;
         // Cluster update
         void wolff();
+        // Function called by cluster update
+        void addToCluster(int z);
 };
 
 // Default constructor
@@ -236,4 +238,30 @@ void SIM::wolff(){
     cluster.assign(nSpins,0);
     // Starting spin of the cluster
     int z = rand->randInt(nSpins-1);
+    // Add spin to the cluster
+    cluster[z] = 1;
+    int s1,s2;
+    for(int i=0;i<neighbors[z].size();i++){
+        s1 = bonds[neighbors[z][i]].a;
+        s2 = bonds[neighbors[z][i]].b;
+        if(cluster[s1] == 0){
+            if(spins[s1] == spins[z]){
+                if(rand->randDblExc() < (1 - exp(-1.0*bonds[neighbors[z][i]].beta*bonds[neighbors[z][i]].J))){
+                    addToCluster(s1);
+                }
+            }
+        }
+        else if(cluster[s2] == 0){
+            if(spins[s2] == spins[z]){
+                if(rand->randDblExc() < (1 - exp(-1.0*bonds[neighbors[z][i]].beta*bonds[neighbors[z][i]].J))){
+                    addToCluster(s2);
+                }
+            }
+        }
+    }
+}
+
+void SIM::addToCluster(int z){
+    cluster[z] = 1;
+    // TODO: Add neighbors, rest of algorithm
 }
