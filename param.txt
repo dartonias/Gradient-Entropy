@@ -4,7 +4,7 @@ betaLow     0.75
 betaHigh    1.50
 JLow        1.00
 JHigh       1.00
-Eq          1000
-MCS         10000
-bins        10000
+Eq          10
+MCS         100
+bins        100
 seed        12345

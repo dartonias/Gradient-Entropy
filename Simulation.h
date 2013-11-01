@@ -64,6 +64,8 @@ class SIM{
         double Energy;
         // Object used for cluster update
         std::vector<int> cluster;
+        // Accumulated measurements
+        double mE;
     public:
         // Default constructor, will read from a parameter file
         SIM();
@@ -87,6 +89,12 @@ class SIM{
         void addToCluster(int z);
         // Print the configuration
         void print();
+        // Reset all the measurements
+        void resetMeasures();
+        // Print all the measurements to file
+        void printMeasures();
+        // One monte carlo sweep, corresponding to "nSpins" single updates and one "wolff" update`
+        void sweep();
 };
 
 // Default constructor
@@ -97,6 +105,7 @@ SIM::SIM(){
     buildJump();
     polarizeSpins();
     Energy = calcE();
+    resetMeasures();
 }
 
 // Reads the input parameters from a file
@@ -347,4 +356,28 @@ void SIM::print(){
         std::cout << std::endl;
     }
     std::cout << "Energy = " << Energy << std::endl << std::endl;
+}
+
+void SIM::resetMeasures(){
+    mE = 0.0;
+}
+
+void SIM::printMeasures(){
+    std::string filename = "bins.txt";
+    std::fstream outFile(filename.c_str(), std::fstream::app);
+    outFile << mE / MCS << std::endl;
+    outFile.close();
+}
+
+void SIM::sweep(){
+    // Update the system
+    for(int i=0;i<nSpins/2;i++){
+        singleUp();
+    }
+    wolff();
+    for(int i=0;i<nSpins/2;i++){
+        singleUp();
+    }
+    // Measure the system
+    mE += Energy;
 }
