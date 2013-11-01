@@ -69,8 +69,10 @@ class SIM{
         SIM();
         // Reads the data from input file
         void readInput();
-        // Build up all the neighbors
-        void buildLatt();
+        // Build up all the neighbors with a gradient in coupling and strength
+        void buildGradient();
+        // Build up all the neighbors with a jump in coupling and strength
+        void buildJump();
         // Calculate full energy
         double calcE();
         // Polarize the spins of the lattice
@@ -83,13 +85,16 @@ class SIM{
         void wolff();
         // Function called by cluster update
         void addToCluster(int z);
+        // Print the configuration
+        void print();
 };
 
 // Default constructor
 SIM::SIM(){
     readInput();
     rand = new MTRand(seed);
-    buildLatt();
+    //buildGradient();
+    buildJump();
     polarizeSpins();
     Energy = calcE();
 }
@@ -134,7 +139,7 @@ void SIM::readInput(){
 // Builds a rectangular lattice
 // We will us open boundary conditions, to match better what we expect
 // for any microscopic experimental systems
-void SIM::buildLatt(){
+void SIM::buildGradient(){
     nSpins = Lx*Ly;
 
     std::vector<int> tvec;
@@ -150,6 +155,66 @@ void SIM::buildLatt(){
         for (int y=0;y<Ly;y++){
             tJ = JLow + x*1.0/Lx * (JHigh - JLow);
             tB = betaLow + x*1.0/Lx * (betaHigh - betaLow);
+
+            // Bond to the right
+            s1 = x + y*Lx;
+            s2 = s1 + 1;
+            if (x < Lx-1){
+                tBond.assign(s1,s2,tJ,tB);
+                bonds.push_back(tBond);
+                neighbors[s1].push_back(bond_counter);
+                neighbors[s2].push_back(bond_counter);
+                bond_counter++;
+            }
+
+            // Upward bond
+            s2 = s1 + Lx;
+            if (y < Ly-1){
+                tBond.assign(s1,s2,tJ,tB);
+                bonds.push_back(tBond);
+                neighbors[s1].push_back(bond_counter);
+                neighbors[s2].push_back(bond_counter);
+                bond_counter++;
+            }
+        }
+    }
+
+    /* Debugging for bonds
+    for (int i=0;i<neighbors.size();i++){
+        std::cout << i << " --> ";
+        for (int j=0;j<neighbors[i].size();j++){
+            std::cout << bonds[neighbors[i][j]].a << " "<< bonds[neighbors[i][j]].b <<", ";
+        }
+        std::cout << std::endl;
+    }
+    */
+}
+
+// Builds a rectangular lattice
+// We will us open boundary conditions, to match better what we expect
+// for any microscopic experimental systems
+void SIM::buildJump(){
+    nSpins = Lx*Ly;
+
+    std::vector<int> tvec;
+    tvec.clear();
+    neighbors.resize(nSpins,tvec);
+
+    bonds.clear();
+    BOND tBond;
+    int bond_counter = 0;
+    int s1, s2;
+    double tJ, tB;
+    for (int x=0;x<Lx;x++){
+        for (int y=0;y<Ly;y++){
+            if(x<Lx/2){
+                tJ = JLow;
+                tB = betaLow;
+            }
+            else{
+                tJ = JHigh;
+                tB = betaHigh;
+            }
 
             // Bond to the right
             s1 = x + y*Lx;
@@ -239,6 +304,18 @@ void SIM::wolff(){
     // Starting spin of the cluster
     int z = rand->randInt(nSpins-1);
     // Add spin to the cluster
+    addToCluster(z);
+    // Flip cluster, change enegy
+    for(int i=0;i<nSpins;i++){
+        if(cluster[i] == 1){
+            spins[i] = (spins[i] + 1)%2;
+        }
+    }
+    Energy = calcE();
+}
+
+// Recursive algorithm for adding spins to the cluster
+void SIM::addToCluster(int z){
     cluster[z] = 1;
     int s1,s2;
     for(int i=0;i<neighbors[z].size();i++){
@@ -261,7 +338,13 @@ void SIM::wolff(){
     }
 }
 
-void SIM::addToCluster(int z){
-    cluster[z] = 1;
-    // TODO: Add neighbors, rest of algorithm
+// Print the lattice
+void SIM::print(){
+    for(int y=0;y<Ly;y++){
+        for(int x=0;x<Lx;x++){
+            std::cout << spins[x + Lx*y] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "Energy = " << Energy << std::endl << std::endl;
 }

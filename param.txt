@@ -1,7 +1,7 @@
-Lx          16
-Ly          16
-betaLow     0.10
-betaHigh    0.10
+Lx          32
+Ly          32
+betaLow     0.75
+betaHigh    1.50
 JLow        1.00
 JHigh       1.00
 Eq          1000
