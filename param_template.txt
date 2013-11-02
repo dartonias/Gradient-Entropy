@@ -1,0 +1,10 @@
+Lx          __Lx
+Ly          __Ly
+betaLow     __betaLow
+betaHigh    __betaHigh
+JLow        __JLow
+JHigh       __JHigh
+Eq          __Eq
+MCS         __MCS
+bins        __bins
+seed        __seed

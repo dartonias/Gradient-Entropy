@@ -364,7 +364,7 @@ void SIM::resetMeasures(){
 
 void SIM::printMeasures(){
     std::string filename = "bins.txt";
-    std::fstream outFile(filename.c_str(), std::fstream::app);
+    std::fstream outFile(filename.c_str(), std::fstream::out | std::fstream::app);
     outFile << mE / MCS << std::endl;
     outFile.close();
 }
