@@ -55,7 +55,7 @@ def main():
     Bc = 1.0/Tc
     Lset = [8*i for i in range(1,2)]
     Bset = [1.0/(1.5)**i for i in range(1,101)]
-    Bset += [0.02*Bc*i for i in range(1,101)]
+    Bset += [0.02*Bc*i for i in range(1,151)]
     Bset = set(Bset)
     Bset = list(Bset)
     Bset.sort()
