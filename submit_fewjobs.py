@@ -47,7 +47,6 @@ def main():
     oldRep = 0
     numRep = 1
 
-    fout = open('runme3','w')
     # Allows for changing from normal and modified simulation
     normal = True
 
