@@ -48,10 +48,12 @@ def main():
     numRep = 1
 
     fout = open('runme3','w')
+    # Allows for changing from normal and modified simulation
+    normal = True
 
     Tc = 1.0/np.log(1+np.sqrt(2))
     Bc = 1.0/Tc
-    Lset = [8*i for i in range(1,9)]
+    Lset = [8*i for i in range(1,2)]
     Bset = [1.0/(1.5)**i for i in range(1,101)]
     Bset += [0.02*Bc*i for i in range(1,101)]
     Bset = set(Bset)
@@ -66,7 +68,10 @@ def main():
         input_dict['__Ly'] = iL
         for iB in Bset:
             input_dict['__betaLow'] = iB
-            input_dict['__betaHigh'] = iB
+            if normal:
+                input_dict['__betaHigh'] = iB
+            else:
+                input_dict['__betaHigh'] = 2*iB
             for ir in repset:
                 input_dict['__seed'] = random.randint(1,999999)
                 dir_name = folder_fmt % (iL,iB,ir)
