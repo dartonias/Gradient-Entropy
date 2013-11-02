@@ -43,7 +43,7 @@ def main():
     # Folder structure will be of the form
     # L%03d/R%.5f/r%04d/bins.txt
     # L = size, B = beta, r = random realization number
-    folder_fmt = 'L%03d/B%.6f/r%04d'
+    folder_fmt = 'L%03d/B%.10e/r%04d'
     oldRep = 0
     numRep = 1
 
@@ -59,9 +59,10 @@ def main():
     Bset = set(Bset)
     Bset = list(Bset)
     Bset.sort()
+    print Bset
     repset = range(oldRep,numRep+oldRep)
     job_min = 0
-    job_max = 1
+    job_max = 10
     c_job = 0
     for iL in Lset:
         input_dict['__Lx'] = iL
@@ -84,7 +85,7 @@ def main():
                         pass
                     sp.call('sed' + replace(input_dict) + ' <../../../param_template.txt >param.txt',shell=True,cwd=dir_name)
                     sp.call('cp ../../../gradient .',shell=True,cwd=dir_name)
-                    sp.call('sqsub --mpp 800M -r %dh -e run.err -o run.out ./gradient' % runtime,shell=True,cwd=dir_name)
+                    #sp.call('sqsub --mpp 800M -r %dh -e run.err -o run.out ./gradient' % runtime,shell=True,cwd=dir_name)
                 c_job += 1
 
 if __name__ == '__main__':
