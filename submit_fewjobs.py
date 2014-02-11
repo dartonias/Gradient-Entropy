@@ -58,7 +58,6 @@ def main():
     Bset = set(Bset)
     Bset = list(Bset)
     Bset.sort()
-    print Bset
     repset = range(oldRep,numRep+oldRep)
     job_min = 0
     job_max = 10
@@ -69,9 +68,9 @@ def main():
         for iB in Bset:
             input_dict['__betaLow'] = iB
             if normal:
-                input_dict['__betaHigh'] = iB
+                input_dict['__JHigh'] = 1.0
             else:
-                input_dict['__betaHigh'] = 2*iB
+                input_dict['__JHigh'] = 2.0
             for ir in repset:
                 input_dict['__seed'] = random.randint(1,999999)
                 dir_name = folder_fmt % (iL,iB,ir)

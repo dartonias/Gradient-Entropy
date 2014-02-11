@@ -132,7 +132,7 @@ void SIM::readInput(){
     assert (betaLow <= betaHigh);
     assert (JLow <= JHigh);
 
-    /* Debug for input
+#ifdef DEBUG
     std::cout<< Lx          << std::endl;
     std::cout<< Ly          << std::endl;
     std::cout<< betaLow     << std::endl;
@@ -142,7 +142,7 @@ void SIM::readInput(){
     std::cout<< Eq          << std::endl;
     std::cout<< MCS         << std::endl;
     std::cout<< bins        << std::endl;
-    */
+#endif
 }
 
 // Builds a rectangular lattice
@@ -188,7 +188,7 @@ void SIM::buildGradient(){
         }
     }
 
-    /* Debugging for bonds
+#ifdef DEBUG
     for (int i=0;i<neighbors.size();i++){
         std::cout << i << " --> ";
         for (int j=0;j<neighbors[i].size();j++){
@@ -196,7 +196,7 @@ void SIM::buildGradient(){
         }
         std::cout << std::endl;
     }
-    */
+#endif
 }
 
 // Builds a rectangular lattice
@@ -228,7 +228,19 @@ void SIM::buildJump(){
             // Bond to the right
             s1 = x + y*Lx;
             s2 = s1 + 1;
-            if (x < Lx-1){
+            // For the middle bond connecting the two replicas, we take the average coupling and temperature
+            // This creates a model that is symmetric in the number of low and high coupling bonds,
+            // leaving only one row of modified coupling bonds
+            if (x == (Lx/2-1)){
+                tJ = (JLow + JHigh)/2.;
+                tB = (betaLow + betaHigh)/2.;
+                tBond.assign(s1,s2,tJ,tB);
+                bonds.push_back(tBond);
+                neighbors[s1].push_back(bond_counter);
+                neighbors[s2].push_back(bond_counter);
+                bond_counter++;
+            }
+            else if (x < Lx-1){
                 tBond.assign(s1,s2,tJ,tB);
                 bonds.push_back(tBond);
                 neighbors[s1].push_back(bond_counter);
@@ -248,7 +260,7 @@ void SIM::buildJump(){
         }
     }
 
-    /* Debugging for bonds
+#ifdef DEBUG
     for (int i=0;i<neighbors.size();i++){
         std::cout << i << " --> ";
         for (int j=0;j<neighbors[i].size();j++){
@@ -256,7 +268,7 @@ void SIM::buildJump(){
         }
         std::cout << std::endl;
     }
-    */
+#endif
 }
 
 // Full calculation of the energy, by looping over all the bonds
@@ -297,13 +309,13 @@ void SIM::singleUp(){
         Energy += dE;
     }
     
-    /* Debugging check
+#ifdef DEBUG
     if(fabs(Energy - calcE()) > 1e-5){
         std::cout << "Energy = " << Energy << std::endl;
         std::cout << "calcE = " << calcE() << std::endl;
         throw -1;
     }
-    */
+#endif
 }
 
 // Wolff cluster update, important for typical systems near T_c
